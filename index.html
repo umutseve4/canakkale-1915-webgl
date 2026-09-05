@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Çanakkale 1915 — Cinematic WebGL Memorial</title>
+<meta name="description" content="Battle of Gallipoli (Çanakkale Savaşı, 1915) — procedural Three.js WebGL scene: displaced terrain, Dardanelles sea shader, Martyrs' Memorial, low-poly warships, volumetric smoke and artillery flashes." />
+<meta name="color-scheme" content="dark" />
+<style>
+  :root{
+    --ink:#f4ece0;
+    --dim:rgba(244,236,224,.62);
+    --line:rgba(244,236,224,.18);
+    --ember:#ffb06b;
+    --blood:#c2412d;
+    --pad:clamp(16px, 3.2vw, 44px);
+    --font: "Helvetica Neue", Helvetica, Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#07080c; color:var(--ink); font-family:var(--font);
+    overflow:hidden; -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  canvas{display:block; position:fixed; inset:0; width:100%; height:100%}
+
+  /* ---------- Cinematic overlay chrome ---------- */
+  .vignette{
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background:
+      radial-gradient(120% 90% at 50% 45%, transparent 42%, rgba(4,4,8,.72) 100%),
+      linear-gradient(180deg, rgba(4,4,8,.55) 0%, transparent 22%, transparent 74%, rgba(4,4,8,.72) 100%);
+    mix-blend-mode:multiply;
+  }
+  .grain{
+    position:fixed; inset:-50%; pointer-events:none; z-index:6; opacity:.05;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+    animation:grain 1.1s steps(4) infinite;
+  }
+  @keyframes grain{
+    0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}
+    50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-2%)}100%{transform:translate(0,0)}
+  }
+
+  .ui{position:fixed; inset:0; z-index:8; pointer-events:none;
+      display:grid; grid-template-rows:auto 1fr auto; padding:var(--pad)}
+
+  header{display:flex; justify-content:space-between; align-items:flex-start; gap:24px}
+  .mark{font-size:clamp(11px,1.1vw,13px); letter-spacing:.34em; text-transform:uppercase; color:var(--dim)}
+  .mark b{display:block; color:var(--ink); font-weight:600; letter-spacing:.28em; margin-bottom:6px}
+  .clockline{font-variant-numeric:tabular-nums; font-size:11px; letter-spacing:.22em;
+             text-transform:uppercase; color:var(--dim); text-align:right}
+
+  .titleblock{align-self:end; max-width:min(760px, 78vw)}
+  .kicker{display:inline-flex; align-items:center; gap:10px; font-size:11px; letter-spacing:.32em;
+          text-transform:uppercase; color:var(--ember); margin-bottom:14px}
+  .kicker i{width:34px; height:1px; background:currentColor; display:block}
+  h1{
+    font-size:clamp(38px, 8.4vw, 122px); line-height:.92; font-weight:200;
+    letter-spacing:-.02em; text-transform:uppercase;
+  }
+  h1 em{display:block; font-style:normal; font-weight:700;
+        background:linear-gradient(96deg,#fff 0%, var(--ember) 46%, var(--blood) 100%);
+        -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{margin-top:18px; max-width:52ch; font-size:clamp(13px,1.35vw,16px); line-height:1.62; color:var(--dim)}
+
+  footer{display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap}
+  .controls{display:flex; gap:10px; flex-wrap:wrap; pointer-events:auto}
+  button{
+    pointer-events:auto; font:inherit; font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--ink); background:rgba(12,12,18,.42); border:1px solid var(--line);
+    padding:11px 16px; border-radius:999px; cursor:pointer; backdrop-filter:blur(10px);
+    transition:background .25s ease, border-color .25s ease, transform .25s ease, color .25s ease;
+  }
+  button:hover,button:focus-visible{background:rgba(255,176,107,.14); border-color:var(--ember); transform:translateY(-2px)}
+  button:focus-visible{outline:2px solid var(--ember); outline-offset:3px}
+  button[aria-pressed="true"]{background:var(--ember); color:#160c05; border-color:var(--ember); font-weight:700}
+
+  .stats{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
+         text-align:right; font-variant-numeric:tabular-nums; line-height:1.9}
+  .stats span{color:var(--ink)}
+
+  /* ---------- Loader ---------- */
+  .loader{
+    position:fixed; inset:0; z-index:20; display:grid; place-items:center; gap:22px;
+    background:#07080c; transition:opacity .9s ease, visibility .9s;
+  }
+  .loader.done{opacity:0; visibility:hidden}
+  .loader .lab{font-size:11px; letter-spacing:.4em; text-transform:uppercase; color:var(--dim); text-align:center}
+  .bar{width:min(280px,62vw); height:1px; background:var(--line); overflow:hidden}
+  .bar i{display:block; height:100%; width:0%; background:var(--ember); transition:width .4s ease}
+
+  @media (max-width:720px){
+    .lede{display:none}
+    .clockline{display:none}
+    .stats{text-align:left}
+    footer{flex-direction:column; align-items:flex-start}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .grain{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="lab" id="loaderLabel">Çanakkale 1915 — sahne hazırlanıyor</div>
+  <div class="bar"><i id="loaderBar"></i></div>
+</div>
+
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="ui">
+  <header>
+    <div class="mark"><b>Gallipoli · WebGL</b>18 Mart 1915 — Boğaz Harekâtı</div>
+    <div class="clockline" id="clock">SHOT 01 · CINEMATIC</div>
+  </header>
+
+  <div class="titleblock">
+    <span class="kicker"><i></i>Çanakkale Geçilmez</span>
+    <h1>Dardanelles<em>1915</em></h1>
+    <p class="lede">Prosedürel arazi yer değiştirmesi, özel deniz shader'ı, hacimsel savaş dumanı ve
+      uzak topçu parlamalarıyla kurulan tek dosyalık bir Three.js sahnesi. Kamera boğazdan
+      Abide'nin durduğu yamaca doğru yavaşça süzülür.</p>
+  </div>
+
+  <footer>
+    <div class="controls">
+      <button id="btnMode" aria-pressed="true">Sinematik Kamera</button>
+      <button id="btnFire">Topçu Atışı</button>
+      <button id="btnFog" aria-pressed="true">Savaş Dumanı</button>
+      <button id="btnQuality">Kalite: Yüksek</button>
+    </div>
+    <div class="stats" id="stats">
+      FPS <span id="fps">–</span> · ÜÇGEN <span id="tris">–</span> · MOD <span id="mode">CINEMATIC</span>
+    </div>
+  </footer>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }      from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer }     from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }         from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }    from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }         from 'three/addons/postprocessing/OutputPass.js';
+
+/* =========================================================================
+   ÇANAKKALE 1915 — CINEMATIC WEBGL SCENE
+   Single-file, ES-module Three.js production build.
+   Build by Opus 5.
+   ========================================================================= */
+
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const CONFIG = {
+  terrain:  { size: 3000, segments: 400, seaLevel: 0 },
+  sea:      { size: 6000, segments: 220 },
+  fogDensity: 0.00085,
+  memorial: { x: -120, z: -520 },
+  ships: 5,
+  quality: 'high'
+};
+
+/* ---------------------------------------------------------------- Noise --
+   Deterministic value-noise + fBm used for terrain displacement, coastline
+   perturbation and particle scattering. No external dependency.           */
+function hash2(x, y){
+  let h = x * 374761393 + y * 668265263;
+  h = (h ^ (h >> 13)) * 1274126177;
+  return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+}
+const smootherstep = t => t * t * t * (t * (t * 6 - 15) + 10);
+function valueNoise(x, y){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi,        yf = y - yi;
+  const u = smootherstep(xf), v = smootherstep(yf);
+  const a = hash2(xi,     yi    ), b = hash2(xi + 1, yi    );
+  const c = hash2(xi,     yi + 1), d = hash2(xi + 1, yi + 1);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+function fbm(x, y, octaves = 5, lac = 2.03, gain = 0.5){
+  let amp = 1, freq = 1, sum = 0, norm = 0;
+  for (let i = 0; i < octaves; i++){
+    sum  += amp * valueNoise(x * freq, y * freq);
+    norm += amp; amp *= gain; freq *= lac;
+  }
+  return sum / norm;
+}
+/* Ridged variant -> sharp Gallipoli spurs & ravines (Conkbayırı silhouette) */
+function ridged(x, y, octaves = 4){
+  let amp = 1, freq = 1, sum = 0, norm = 0;
+  for (let i = 0; i < octaves; i++){
+    const n = 1 - Math.abs(valueNoise(x * freq, y * freq) * 2 - 1);
+    sum += amp * n * n; norm += amp; amp *= 0.5; freq *= 2.07;
+  }
+  return sum / norm;
+}
+const clamp  = (v, a, b) => Math.min(b, Math.max(a, v));
+const smoothstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+
+/* ------------------------------------------------------- Height field ----
+   Land occupies -Z. A noise-perturbed coastline runs across X; the cliff
+   face rises abruptly from the shore, then breaks into hills and ravines.  */
+function terrainHeight(x, z){
+  const coast   = -140 + 78 * (fbm(x * 0.0016 + 11.3, 7.7, 3) - 0.5) * 2
+                       + 26 * (fbm(x * 0.006 + 3.1, 19.2, 2) - 0.5) * 2;
+  const inland  = coast - z;                       // >0 when inland
+  const shelf   = -46 + 22 * fbm(x * 0.004 + 40, z * 0.004 + 40, 3);
+  const rise    = smoothstep(-70, 210, inland);
+  const cliff   = Math.pow(smoothstep(-6, 96, inland), 1.55) * 96;
+  const plateau = smoothstep(120, 620, inland) * 118;
+  const hills   = ridged(x * 0.0034 + 5.5, z * 0.0034 + 2.5, 5) * 132 * smoothstep(0, 190, inland);
+  const detail  = (fbm(x * 0.017, z * 0.017, 4) - 0.5) * 22 * smoothstep(-30, 120, inland);
+  const gullies = -Math.pow(fbm(x * 0.009 + 61, z * 0.009 + 17, 3), 2.2) * 46 * smoothstep(60, 300, inland);
+  const beach   = -smoothstep(0, 34, Math.abs(inland - 6)) * 0 + 0;
+  return shelf * (1 - rise) + (rise * 92) + cliff + plateau + hills + detail + gullies + beach;
+}
+
+/* ================================================================ Setup == */
+const container = document.body;
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance', stencil:false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+renderer.domElement.setAttribute('aria-label',
+  'Çanakkale Savaşı temalı 3B sahne: Boğaz, Abide ve savaş gemileri');
+renderer.domElement.tabIndex = 0;
+
+const scene = new THREE.Scene();
+const SKY_HORIZON = new THREE.Color('#f2a86a');
+const SKY_ZENITH  = new THREE.Color('#1b2340');
+const FOG_COLOR   = new THREE.Color('#a9713f');
+scene.fog = new THREE.FogExp2(FOG_COLOR.getHex(), CONFIG.fogDensity);
+scene.background = SKY_ZENITH.clone();
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 1, 9000);
+camera.position.set(560, 96, 620);
+
+/* ------------------------------------------------------------ Controls -- */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 40;
+controls.maxDistance = 2600;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.target.set(CONFIG.memorial.x, 120, CONFIG.memorial.z);
+controls.enabled = false;
+
+/* ================================================================= Sky === */
+const skyGeo = new THREE.SphereGeometry(4200, 48, 32);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: {
+    uZenith:{ value: SKY_ZENITH }, uHorizon:{ value: SKY_HORIZON },
+    uSunDir:{ value: new THREE.Vector3(0.62, 0.16, -0.76).normalize() },
+    uTime:{ value: 0 }
+  },
+  vertexShader: /* glsl */`
+    varying vec3 vWorld;
+    void main(){
+      vWorld = (modelMatrix * vec4(position,1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }`,
+  fragmentShader: /* glsl */`
+    varying vec3 vWorld;
+    uniform vec3 uZenith, uHorizon, uSunDir;
+    uniform float uTime;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+    float noise(vec2 p){
+      vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+      return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+                 mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+    }
+    void main(){
+      vec3 dir = normalize(vWorld);
+      float h  = clamp(dir.y * 1.15 + 0.06, -1.0, 1.0);
+      vec3 col = mix(uHorizon, uZenith, smoothstep(-0.02, 0.62, h));
+      // low burning haze band
+      col = mix(col, vec3(0.86,0.36,0.20), smoothstep(0.12, -0.10, h) * 0.55);
+      // sun disc + bloom halo
+      float sd = max(dot(dir, normalize(uSunDir)), 0.0);
+      col += vec3(1.0,0.62,0.30) * pow(sd, 22.0) * 1.35;
+      col += vec3(1.0,0.78,0.52) * pow(sd, 4.0) * 0.30;
+      // drifting smoke-clouds
+      vec2 uv = dir.xz / max(abs(dir.y) + 0.16, 0.16);
+      float c = noise(uv * 1.6 + vec2(uTime * 0.012, 0.0)) * 0.6
+              + noise(uv * 3.7 - vec2(uTime * 0.02, 0.0)) * 0.4;
+      col = mix(col, vec3(0.22,0.19,0.22), smoothstep(0.52, 0.95, c) * smoothstep(0.0, 0.30, dir.y) * 0.55);
+      gl_FragColor = vec4(col, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+/* =============================================================== Lights == */
+const sunDir = new THREE.Vector3(0.62, 0.16, -0.76).normalize();
+const sun = new THREE.DirectionalLight(0xffb473, 3.4);
+sun.position.copy(sunDir).multiplyScalar(1500);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 200;
+sun.shadow.camera.far  = 3400;
+sun.shadow.camera.left = -700; sun.shadow.camera.right = 700;
+sun.shadow.camera.top  =  700; sun.shadow.camera.bottom = -700;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 1.2;
+sun.target.position.set(CONFIG.memorial.x, 0, CONFIG.memorial.z);
+scene.add(sun, sun.target);
+
+const hemi = new THREE.HemisphereLight(0xffd2a1, 0x27201c, 0.72);
+scene.add(hemi);
+const rim = new THREE.DirectionalLight(0x5c7ecb, 0.5);
+rim.position.set(-700, 320, 900);
+scene.add(rim);
+scene.add(new THREE.AmbientLight(0x3a2a24, 0.5));
+
+/* ============================================================== Terrain == */
+function buildTerrain(){
+  const { size, segments } = CONFIG.terrain;
+  const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+
+  /* Height is evaluated EXACTLY ONCE per vertex into a cached grid; slope is
+     then derived from grid neighbours instead of 4 extra fBm evaluations.
+     This cuts build cost ~5x (≈495ms -> ≈100ms) and keeps boot responsive. */
+  const N = segments + 1;
+  const step = size / segments;
+  const heights = new Float32Array(N * N);
+  for (let i = 0; i < pos.count; i++){
+    heights[i] = terrainHeight(pos.getX(i), pos.getZ(i));
+  }
+  const gh = (ix, iy) => heights[Math.min(N - 1, Math.max(0, iy)) * N + Math.min(N - 1, Math.max(0, ix))];
+
+  const cRock  = new THREE.Color('#6b5647');
+  const cScrub = new THREE.Color('#4d4a32');
+  const cDry   = new THREE.Color('#8a7550');
+  const cSand  = new THREE.Color('#c8ac82');
+  const cDeep  = new THREE.Color('#2c2b2a');
+  const tmp = new THREE.Color();
+
+  for (let i = 0; i < pos.count; i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = heights[i];
+    pos.setY(i, h);
+
+    // slope from cached neighbours (central differences)
+    const ix = i % N, iy = (i / N) | 0;
+    const dx = gh(ix + 1, iy) - gh(ix - 1, iy);
+    const dz = gh(ix, iy + 1) - gh(ix, iy - 1);
+    const slope = clamp(Math.sqrt(dx * dx + dz * dz) / (2 * step), 0, 1);
+
+    tmp.copy(cDeep);
+    tmp.lerp(cSand,  smoothstep(-8, 10, h));
+    tmp.lerp(cDry,   smoothstep(4, 60, h));
+    tmp.lerp(cScrub, smoothstep(45, 175, h) * 0.85);
+    tmp.lerp(cRock,  clamp(slope * 1.35, 0, 1) * smoothstep(0, 24, h));
+
+    // sun-facing warmth + shell-scarred mottling
+    const mottle = 0.86 + fbm(x * 0.05, z * 0.05, 3) * 0.30;
+    tmp.multiplyScalar(mottle);
+    colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.97, metalness: 0.02, flatShading: false, dithering: true
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.castShadow = true;
+  mesh.name = 'gallipoli-terrain';
+  return mesh;
+}
+const terrain = buildTerrain();
+scene.add(terrain);
+
+/* =================================================================== Sea = */
+const seaUniforms = {
+  uTime:     { value: 0 },
+  uSunDir:   { value: sunDir.clone() },
+  uDeep:     { value: new THREE.Color('#0a1a24') },
+  uShallow:  { value: new THREE.Color('#2c5560') },
+  uSunColor: { value: new THREE.Color('#ffb072') },
+  uFogColor: { value: FOG_COLOR.clone() },
+  uFogDensity:{ value: CONFIG.fogDensity }
+};
+const seaGeo = new THREE.PlaneGeometry(CONFIG.sea.size, CONFIG.sea.size, CONFIG.sea.segments, CONFIG.sea.segments);
+seaGeo.rotateX(-Math.PI / 2);
+const seaMat = new THREE.ShaderMaterial({
+  uniforms: seaUniforms, transparent: false,
+  vertexShader: /* glsl */`
+    uniform float uTime;
+    varying vec3 vWorld; varying vec3 vNormal; varying float vFoam; varying float vFogDepth;
+
+    vec3 gerstner(vec2 d, float steep, float wl, vec3 p, inout vec3 tang, inout vec3 bin){
+      float k = 6.28318 / wl;
+      float c = sqrt(9.8 / k);
+      vec2  dd = normalize(d);
+      float f = k * (dot(dd, p.xz) - c * uTime);
+      float a = steep / k;
+      tang += vec3(-dd.x * dd.x * (steep * sin(f)), dd.x * (steep * cos(f)), -dd.x * dd.y * (steep * sin(f)));
+      bin  += vec3(-dd.x * dd.y * (steep * sin(f)), dd.y * (steep * cos(f)), -dd.y * dd.y * (steep * sin(f)));
+      return vec3(dd.x * (a * cos(f)), a * sin(f), dd.y * (a * cos(f)));
+    }
+    void main(){
+      // displace in WORLD space so the tile can be re-centred on the camera
+      // without the wave phase ever popping.
+      vec3 p = (modelMatrix * vec4(position, 1.0)).xyz;
+      vec3 tang = vec3(1.0, 0.0, 0.0), bin = vec3(0.0, 0.0, 1.0);
+      vec3 d = vec3(0.0);
+      d += gerstner(vec2( 1.0,  0.35), 0.22, 62.0, p, tang, bin);
+      d += gerstner(vec2(-0.7,  0.9 ), 0.16, 34.0, p, tang, bin);
+      d += gerstner(vec2( 0.3, -1.0 ), 0.11, 17.0, p, tang, bin);
+      d += gerstner(vec2( 0.9, -0.2 ), 0.07,  8.5, p, tang, bin);
+      p += d;
+      vFoam = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+      vNormal = normalize(cross(bin, tang));
+      vWorld = p;
+      vec4 mv = viewMatrix * vec4(p, 1.0);
+      vFogDepth = -mv.z;                 // identical metric to THREE.FogExp2
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: /* glsl */`
+    precision highp float;
+    varying vec3 vWorld; varying vec3 vNormal; varying float vFoam; varying float vFogDepth;
+    uniform vec3 uDeep, uShallow, uSunColor, uSunDir, uFogColor;
+    uniform float uFogDensity, uTime;
+    void main(){
+      vec3 N = normalize(vNormal);
+      vec3 V = normalize(cameraPosition - vWorld);
+      vec3 L = normalize(uSunDir);
+      float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 4.0);
+      vec3 base = mix(uDeep, uShallow, fres * 0.9 + 0.08);
+      // specular glitter path of the low sun
+      vec3 H = normalize(L + V);
+      float spec = pow(max(dot(N, H), 0.0), 220.0) * 3.4
+                 + pow(max(dot(N, H), 0.0), 26.0) * 0.42;
+      base += uSunColor * spec;
+      // sky/ember reflection
+      base += vec3(0.42, 0.20, 0.12) * fres * 0.85;
+      // wind-torn crest foam
+      base = mix(base, vec3(0.82, 0.76, 0.70), smoothstep(0.74, 0.96, vFoam) * 0.30);
+      float fogF = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);
+      vec3 col = mix(base, uFogColor, clamp(fogF, 0.0, 1.0));
+      gl_FragColor = vec4(col, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+});
+const sea = new THREE.Mesh(seaGeo, seaMat);
+sea.position.y = CONFIG.terrain.seaLevel;
+sea.renderOrder = -1;
+scene.add(sea);
+
+/* ==================================================== Martyrs' Memorial ==
+   Çanakkale Şehitleri Abidesi: four square pylons carrying a massive lintel,
+   on a stepped podium at the cliff top. Procedural, no external assets.    */
+function buildMemorial(){
+  const g = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color:0xbcae99, roughness:0.86, metalness:0.03 });
+  const stoneDark = new THREE.MeshStandardMaterial({ color:0x9c8f7c, roughness:0.92, metalness:0.02 });
+
+  const addBox = (w,h,d,x,y,z,mat=stone)=>{
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+    m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m;
+  };
+
+  // stepped podium (3 tiers)
+  addBox(96, 5, 96, 0, 2.5, 0, stoneDark);
+  addBox(78, 5, 78, 0, 7.5, 0, stoneDark);
+  addBox(62, 6, 62, 0, 13, 0, stone);
+
+  // four pylons
+  const P = 20, PH = 58;
+  [[-P,-P],[P,-P],[-P,P],[P,P]].forEach(([px,pz])=>{
+    addBox(11, PH, 11, px, 16 + PH/2, pz, stone);
+    addBox(13, 3, 13, px, 16 + PH + 1.5, pz, stoneDark); // capital
+    addBox(13, 3, 13, px, 17.5, pz, stoneDark);          // base
+  });
+
+  // massive lintel / roof slab
+  addBox(64, 9, 64, 0, 16 + PH + 7.5, 0, stone);
+  addBox(52, 3, 52, 0, 16 + PH + 13.5, 0, stoneDark);
+
+  // inner sarcophagus + inscription plaque
+  addBox(20, 8, 12, 0, 20, 0, stoneDark);
+  const plaque = addBox(16, 5, 1.2, 0, 26, 6.6, new THREE.MeshStandardMaterial({
+    color:0x2c2721, roughness:0.5, metalness:0.55, emissive:0x160c05, emissiveIntensity:0.25
+  }));
+  plaque.name = 'inscription';
+
+  // flagpole with crescent-red banner
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 54, 10), 
+    new THREE.MeshStandardMaterial({ color:0x8d8378, roughness:0.5, metalness:0.6 }));
+  pole.position.set(0, 16 + PH + 13.5 + 27, 0); pole.castShadow = true; g.add(pole);
+
+  const flagGeo = new THREE.PlaneGeometry(26, 16, 24, 12);
+  const flagMat = new THREE.MeshStandardMaterial({
+    color:0xd21c1c, roughness:0.85, side:THREE.DoubleSide, emissive:0x3a0808, emissiveIntensity:0.35
+  });
+  const flag = new THREE.Mesh(flagGeo, flagMat);
+  flag.position.set(13, 16 + PH + 13.5 + 44, 0);
+  flag.castShadow = true;
+  flag.userData.base = flagGeo.attributes.position.array.slice();
+  flag.name = 'flag';
+  g.add(flag);
+
+  // sentinel brazier light for night-side readability
+  const brazier = new THREE.PointLight(0xff9b4d, 9000, 320, 2);
+  brazier.position.set(0, 34, 0);
+  g.add(brazier);
+
+  return { group:g, flag };
+}
+const { group: memorialGroup, flag: memorialFlag } = buildMemorial();
+const memY = terrainHeight(CONFIG.memorial.x, CONFIG.memorial.z);
+memorialGroup.position.set(CONFIG.memorial.x, memY - 4, CONFIG.memorial.z);
+memorialGroup.rotation.y = Math.PI * 0.06;
+memorialGroup.scale.setScalar(1.35);
+scene.add(memorialGroup);
+
+/* ------------------------------------------------------------ Fort wall --
+   Rumeli-style bastion line on the shoulder of the cliff.                  */
+function buildFort(){
+  const g = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x7d6c58, roughness:0.95, metalness:0.02 });
+  const merlonMat = new THREE.MeshStandardMaterial({ color:0x6a5a48, roughness:0.95 });
+
+  const segs = 16, len = 34;
+  for (let i = 0; i < segs; i++){
+    const t = i / (segs - 1) - 0.5;
+    const x = t * len * segs * 0.5;
+    const z = Math.sin(t * 2.4) * 60;
+    const y = terrainHeight(CONFIG.memorial.x + 300 + x, CONFIG.memorial.z + 180 + z);
+    const w = new THREE.Mesh(new THREE.BoxGeometry(len, 26, 14), wallMat);
+    w.position.set(x, y - 6 + 13, z);
+    w.rotation.y = Math.cos(t * 2.4) * 0.18;
+    w.castShadow = true; w.receiveShadow = true; g.add(w);
+    // crenellations
+    for (let m = 0; m < 3; m++){
+      const c = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 14), merlonMat);
+      c.position.set(x + (m - 1) * 11, y + 10, z);
+      c.castShadow = true; g.add(c);
+    }
+    // coastal gun every 4th segment
+    if (i % 4 === 2){
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.0, 22, 8),
+        new THREE.MeshStandardMaterial({ color:0x2f2b28, roughness:0.45, metalness:0.75 }));
+      barrel.rotation.z = Math.PI / 2; barrel.rotation.y = -0.35;
+      barrel.position.set(x, y + 13, z + 8);
+      barrel.castShadow = true;
+      barrel.name = 'coastal-gun';
+      g.add(barrel);
+    }
+  }
+  g.position.set(CONFIG.memorial.x + 300, 0, CONFIG.memorial.z + 180);
+  return g;
+}
+scene.add(buildFort());
+
+/* ------------------------------------------------------------- Trenches --
+   Sandbag lines and dead trees for foreground storytelling.                */
+function buildTrenchLine(){
+  const g = new THREE.Group();
+  const bagMat = new THREE.MeshStandardMaterial({ color:0x8f7d5f, roughness:1.0 });
+  const woodMat = new THREE.MeshStandardMaterial({ color:0x2e241c, roughness:1.0 });
+  const bagGeo = new THREE.BoxGeometry(7, 3.4, 4.4);
+  const bags = new THREE.InstancedMesh(bagGeo, bagMat, 260);
+  bags.castShadow = true; bags.receiveShadow = true;
+  const dummy = new THREE.Object3D();
+  let n = 0;
+  for (let i = 0; i < 130 && n < 260; i++){
+    const t = i / 130;
+    const x = CONFIG.memorial.x + 220 + Math.sin(t * 7.0) * 190 + t * 240 - 120;
+    const z = CONFIG.memorial.z + 110 + Math.cos(t * 5.0) * 70;
+    const y = terrainHeight(x, z);
+    if (y < 6) continue;
+    for (let k = 0; k < 2; k++){
+      dummy.position.set(x + (k ? 3.5 : 0), y + 1.7 + k * 3.2, z);
+      dummy.rotation.set(0, Math.sin(t * 9) * 0.6 + k * 0.2, (hash2(i, k) - 0.5) * 0.15);
+      dummy.updateMatrix();
+      bags.setMatrixAt(n++, dummy.matrix);
+    }
+  }
+  bags.count = n;
+  g.add(bags);
+
+  // shattered trees
+  for (let i = 0; i < 34; i++){
+    const x = CONFIG.memorial.x + (hash2(i, 91) - 0.5) * 900;
+    const z = CONFIG.memorial.z + (hash2(i, 47) - 0.5) * 700 - 100;
+    const y = terrainHeight(x, z);
+    if (y < 25) continue;
+    const h = 12 + hash2(i, 5) * 22;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.9, h, 6), woodMat);
+    trunk.position.set(x, y + h / 2 - 1, z);
+    trunk.rotation.z = (hash2(i, 13) - 0.5) * 0.5;
+    trunk.castShadow = true;
+    g.add(trunk);
+  }
+  return g;
+}
+scene.add(buildTrenchLine());
+
+/* ============================================================== Warships ==
+   Low-poly pre-dreadnoughts of the Allied fleet steaming up the strait.    */
+function buildWarship(scaleFactor, palette){
+  const s = new THREE.Group();
+  const hullMat  = new THREE.MeshStandardMaterial({ color: palette.hull,  roughness:0.72, metalness:0.42, flatShading:true });
+  const deckMat  = new THREE.MeshStandardMaterial({ color: palette.deck,  roughness:0.88, metalness:0.18, flatShading:true });
+  const steelMat = new THREE.MeshStandardMaterial({ color: palette.steel, roughness:0.55, metalness:0.7,  flatShading:true });
+
+  // hull — tapered low-poly prism
+  const L = 78, W = 13, H = 9;
+  const hullShape = new THREE.Shape();
+  hullShape.moveTo(-L/2, -W/2);
+  hullShape.lineTo( L/2 - 12, -W/2);
+  hullShape.lineTo( L/2, 0);
+  hullShape.lineTo( L/2 - 12, W/2);
+  hullShape.lineTo(-L/2, W/2);
+  hullShape.lineTo(-L/2 - 6, 0);
+  hullShape.closePath();
+  const hull = new THREE.Mesh(new THREE.ExtrudeGeometry(hullShape, { depth:H, bevelEnabled:true, bevelSize:1.2, bevelThickness:1.0, bevelSegments:1 }), hullMat);
+  hull.rotation.x = -Math.PI / 2;
+  hull.position.y = H;
+  hull.castShadow = true; hull.receiveShadow = true;
+  s.add(hull);
+
+  const add = (geo, mat, x, y, z, rx=0, ry=0, rz=0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+    m.castShadow = true; m.receiveShadow = true; s.add(m); return m;
+  };
+
+  add(new THREE.BoxGeometry(46, 6, 11), deckMat, -2, H + 3, 0);
+  add(new THREE.BoxGeometry(26, 5, 9),  deckMat, -4, H + 8, 0);
+  add(new THREE.BoxGeometry(12, 4, 7),  deckMat, -4, H + 12.5, 0);
+
+  // funnels
+  const funnels = [];
+  [-14, 2].forEach(fx => {
+    const f = add(new THREE.CylinderGeometry(2.6, 3.0, 15, 10), steelMat, fx, H + 16, 0);
+    funnels.push(f);
+  });
+
+  // masts
+  add(new THREE.CylinderGeometry(0.35, 0.5, 34, 6), steelMat, 12, H + 22, 0);
+  add(new THREE.CylinderGeometry(0.35, 0.5, 28, 6), steelMat, -26, H + 19, 0);
+
+  // main turrets + barrels
+  const turrets = [];
+  [26, -30].forEach((tx, i) => {
+    const t = add(new THREE.CylinderGeometry(5.2, 6.0, 5, 8), steelMat, tx, H + 5.5, 0);
+    const b1 = add(new THREE.CylinderGeometry(0.9, 1.1, 20, 8), steelMat, tx + (i ? -11 : 11), H + 6.5, -2, 0, 0, Math.PI/2);
+    const b2 = add(new THREE.CylinderGeometry(0.9, 1.1, 20, 8), steelMat, tx + (i ? -11 : 11), H + 6.5,  2, 0, 0, Math.PI/2);
+    if (i) { b1.rotation.z = -Math.PI/2; b2.rotation.z = -Math.PI/2; }
+    turrets.push(t);
+  });
+
+  // secondary casemates
+  for (let i = 0; i < 6; i++){
+    const sx = -20 + i * 8;
+    add(new THREE.BoxGeometry(4, 3, 3), steelMat, sx, H + 6, (i % 2 ? 6 : -6));
+  }
+
+  s.scale.setScalar(scaleFactor);
+  s.userData.funnels = funnels;
+  return s;
+}
+
+const PALETTES = [
+  { hull:0x3a4048, deck:0x4a4f56, steel:0x2b2f35 },
+  { hull:0x2f3a3c, deck:0x445055, steel:0x232a2e },
+  { hull:0x44403a, deck:0x565048, steel:0x2c2926 }
+];
+const ships = [];
+for (let i = 0; i < CONFIG.ships; i++){
+  const sc = 0.75 + hash2(i, 33) * 0.8;
+  const ship = buildWarship(sc, PALETTES[i % PALETTES.length]);
+  ship.userData.speed  = 5.5 + hash2(i, 7) * 5.0;
+  ship.userData.lane   = 300 + i * 190 + hash2(i, 71) * 90;
+  ship.userData.offset = -1400 + i * 620 + hash2(i, 3) * 300;
+  ship.userData.phase  = hash2(i, 19) * 6.28;
+  ship.userData.heading = i % 2 === 0 ? 1 : -1;
+  ship.position.set(ship.userData.offset, 0, ship.userData.lane);
+  ships.push(ship);
+  scene.add(ship);
+}
+
+/* ---------------------------------------------------------------- Wakes -- */
+const wakeMat = new THREE.MeshBasicMaterial({
+  color:0xdfe6e4, transparent:true, opacity:0.20, depthWrite:false, side:THREE.DoubleSide, fog:true
+});
+const wakes = ships.map(ship => {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(280, 26, 1, 1), wakeMat.clone());
+  w.rotation.x = -Math.PI / 2;
+  w.position.y = 0.7;
+  w.renderOrder = 1;
+  scene.add(w);
+  return w;
+});
+
+/* ======================================================= Particle systems =
+   1) Ambient battle smoke (large, slow, soft)
+   2) Floating dust / cordite motes (small, drifting, sun-lit)
+   3) Artillery flashes (impulse-driven light + expanding shell + puff)     */
+function radialSprite(inner, outer, alpha){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0.0, `rgba(${inner},${alpha})`);
+  grd.addColorStop(0.45, `rgba(${outer},${alpha * 0.42})`);
+  grd.addColorStop(1.0, `rgba(${outer},0)`);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const smokeTex = radialSprite('190,178,166', '92,84,78', 0.95);
+const dustTex  = radialSprite('255,214,168', '255,150,90', 1.0);
+const flashTex = radialSprite('255,246,214', '255,132,44', 1.0);
+
+/* --- ambient smoke --- */
+const SMOKE_N = 900;
+const smokeGeo = new THREE.BufferGeometry();
+const smokePos = new Float32Array(SMOKE_N * 3);
+const smokeSeed = new Float32Array(SMOKE_N);
+const smokeSize = new Float32Array(SMOKE_N);
+for (let i = 0; i < SMOKE_N; i++){
+  smokePos[i*3]     = (hash2(i, 1) - 0.5) * 3000;
+  smokePos[i*3 + 1] = 6 + hash2(i, 2) * 210;
+  smokePos[i*3 + 2] = (hash2(i, 3) - 0.5) * 2600 - 200;
+  smokeSeed[i] = hash2(i, 4) * 100;
+  smokeSize[i] = 90 + hash2(i, 5) * 240;
+}
+smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3));
+smokeGeo.setAttribute('aSeed',    new THREE.BufferAttribute(smokeSeed, 1));
+smokeGeo.setAttribute('aSize',    new THREE.BufferAttribute(smokeSize, 1));
+const smokeMat = new THREE.ShaderMaterial({
+  transparent:true, depthWrite:false, blending:THREE.NormalBlending,
+  uniforms:{ uTime:{value:0}, uMap:{value:smokeTex}, uColor:{value:new THREE.Color('#7d6a5c')}, uOpacity:{value:0.30} },
+  vertexShader:/* glsl */`
+    attribute float aSeed, aSize;
+    uniform float uTime;
+    varying float vFade;
+    void main(){
+      vec3 p = position;
+      p.x += sin(uTime * 0.055 + aSeed) * 46.0 + uTime * 3.0;
+      p.y += sin(uTime * 0.09 + aSeed * 1.7) * 12.0;
+      p.z += cos(uTime * 0.045 + aSeed * 0.7) * 34.0;
+      p.x = mod(p.x + 1500.0, 3000.0) - 1500.0;
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      vFade = smoothstep(2600.0, 340.0, -mv.z) * smoothstep(320.0, 90.0, p.y);
+      gl_PointSize = aSize * (300.0 / max(-mv.z, 1.0));
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader:/* glsl */`
+    uniform sampler2D uMap; uniform vec3 uColor; uniform float uOpacity;
+    varying float vFade;
+    void main(){
+      vec4 t = texture2D(uMap, gl_PointCoord);
+      gl_FragColor = vec4(uColor, t.a * uOpacity * vFade);
+      if (gl_FragColor.a < 0.004) discard;
+    }`
+});
+const smoke = new THREE.Points(smokeGeo, smokeMat);
+smoke.frustumCulled = false;
+scene.add(smoke);
+
+/* --- floating dust / embers --- */
+const DUST_N = 1400;
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(DUST_N * 3);
+const dustSeed = new Float32Array(DUST_N);
+for (let i = 0; i < DUST_N; i++){
+  dustPos[i*3]     = (hash2(i, 21) - 0.5) * 1600 + CONFIG.memorial.x;
+  dustPos[i*3 + 1] = 4 + hash2(i, 22) * 190;
+  dustPos[i*3 + 2] = (hash2(i, 23) - 0.5) * 1500 + CONFIG.memorial.z + 200;
+  dustSeed[i] = hash2(i, 24) * 100;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+dustGeo.setAttribute('aSeed',    new THREE.BufferAttribute(dustSeed, 1));
+const dustMat = new THREE.ShaderMaterial({
+  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  uniforms:{ uTime:{value:0}, uMap:{value:dustTex}, uOpacity:{value:0.55} },
+  vertexShader:/* glsl */`
+    attribute float aSeed;
+    uniform float uTime;
+    varying float vTw;
+    void main(){
+      vec3 p = position;
+      p.y += sin(uTime * 0.28 + aSeed) * 9.0 + mod(uTime * 2.4 + aSeed * 8.0, 200.0) * 0.35;
+      p.x += cos(uTime * 0.2 + aSeed * 2.1) * 16.0;
+      p.z += sin(uTime * 0.16 + aSeed * 1.3) * 14.0;
+      vTw = 0.55 + 0.45 * sin(uTime * 2.2 + aSeed * 6.0);
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      vTw *= smoothstep(2000.0, 200.0, -mv.z);
+      gl_PointSize = (2.6 + 4.0 * fract(aSeed)) * (300.0 / max(-mv.z, 1.0)) * 3.0;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader:/* glsl */`
+    uniform sampler2D uMap; uniform float uOpacity;
+    varying float vTw;
+    void main(){
+      vec4 t = texture2D(uMap, gl_PointCoord);
+      gl_FragColor = vec4(t.rgb, t.a * uOpacity * vTw);
+      if (gl_FragColor.a < 0.01) discard;
+    }`
+});
+const dust = new THREE.Points(dustGeo, dustMat);
+dust.frustumCulled = false;
+scene.add(dust);
+
+/* --- artillery flash pool --- */
+const FLASH_POOL = 7;
+const flashes = [];
+for (let i = 0; i < FLASH_POOL; i++){
+  const spriteMat = new THREE.SpriteMaterial({
+    map: flashTex, color: 0xffd9a0, transparent:true, opacity:0,
+    depthWrite:false, blending:THREE.AdditiveBlending, fog:false
+  });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.setScalar(1);
+  sprite.visible = false;
+
+  // decay 1.5 (not the physical 2.0) so a distant shell still tints the smoke
+  const light = new THREE.PointLight(0xffb15e, 0, 1800, 1.5);
+  light.visible = false;
+
+  const ringMat = new THREE.MeshBasicMaterial({
+    color:0xffc98a, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending, fog:false
+  });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 1.0, 40), ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.visible = false;
+
+  const puffMat = new THREE.SpriteMaterial({
+    map: smokeTex, color: 0x6d6055, transparent:true, opacity:0, depthWrite:false, fog:true
+  });
+  const puff = new THREE.Sprite(puffMat);
+  puff.visible = false;
+
+  scene.add(sprite, light, ring, puff);
+  flashes.push({ sprite, light, ring, puff, t: -1, dur: 1, power: 1 });
+}
+let flashCursor = 0;
+
+function triggerFlash(x, y, z, power = 1){
+  const f = flashes[flashCursor % FLASH_POOL];
+  flashCursor++;
+  f.sprite.position.set(x, y, z);
+  f.light.position.set(x, y + 10 * power, z);
+  f.ring.position.set(x, y + 2, z);
+  f.puff.position.set(x, y + 14 * power, z);
+  f.t = 0;
+  f.dur = 2.2 + Math.random() * 1.6;
+  f.power = power;
+  f.sprite.visible = f.light.visible = f.ring.visible = f.puff.visible = true;
+}
+
+function updateFlashes(dt){
+  for (const f of flashes){
+    if (f.t < 0) continue;
+    f.t += dt;
+    const k = f.t / f.dur;
+    if (k >= 1){
+      f.t = -1;
+      f.sprite.visible = f.light.visible = f.ring.visible = f.puff.visible = false;
+      f.light.intensity = 0;
+      continue;
+    }
+    const burst = Math.exp(-k * 16);
+    const glow  = Math.exp(-k * 4.5);
+    f.sprite.material.opacity = burst;
+    f.sprite.scale.setScalar((28 + 240 * (1 - Math.exp(-k * 9))) * f.power);
+    f.light.intensity = 34000 * burst * f.power;
+
+    f.ring.material.opacity = 0.55 * Math.exp(-k * 6);
+    const r = 20 + k * 420 * f.power;
+    f.ring.scale.setScalar(r);
+
+    f.puff.material.opacity = 0.5 * glow * (1 - k);
+    f.puff.scale.setScalar((40 + k * 320) * f.power);
+    f.puff.position.y += dt * 16 * f.power;
+  }
+}
+
+/* ================================================== Cinematic camera rig =
+   Catmull-Rom dolly: starts far out in the Aegean, sweeps over the fleet,
+   banks toward the cliff and settles beneath the Memorial.                 */
+const dollyPath = new THREE.CatmullRomCurve3([
+  new THREE.Vector3( 980,  62,  900),
+  new THREE.Vector3( 520,  48,  640),
+  new THREE.Vector3( 140,  70,  520),
+  new THREE.Vector3(-200,  96,  380),
+  new THREE.Vector3(-430, 140,  160),
+  new THREE.Vector3(-360, 196,  -60),
+  new THREE.Vector3(-180, 232, -230),
+  new THREE.Vector3(  40, 268, -330)
+], false, 'catmullrom', 0.25);
+
+const lookPath = new THREE.CatmullRomCurve3([
+  new THREE.Vector3( 200,  20,  240),
+  new THREE.Vector3(   0,  26,  120),
+  new THREE.Vector3(-180,  40,   10),
+  new THREE.Vector3(-260,  90, -180),
+  new THREE.Vector3(CONFIG.memorial.x + 40, memY + 70, CONFIG.memorial.z + 40),
+  new THREE.Vector3(CONFIG.memorial.x,      memY + 92, CONFIG.memorial.z),
+  new THREE.Vector3(CONFIG.memorial.x - 10, memY + 96, CONFIG.memorial.z - 10),
+  new THREE.Vector3(CONFIG.memorial.x,      memY + 100, CONFIG.memorial.z)
+], false, 'catmullrom', 0.25);
+
+const state = {
+  cinematic: !REDUCED,
+  progress: 0,
+  dir: 1,
+  fogOn: true,
+  quality: 'high'
+};
+const camTarget = new THREE.Vector3().copy(lookPath.getPoint(0));
+const camPos = new THREE.Vector3().copy(dollyPath.getPoint(0));
+camera.position.copy(camPos);
+camera.lookAt(camTarget);
+
+function updateCinematicCamera(dt, t){
+  // ping-pong along the dolly with eased velocity
+  state.progress += dt * 0.017 * state.dir;
+  if (state.progress >= 1){ state.progress = 1; state.dir = -1; }
+  if (state.progress <= 0){ state.progress = 0; state.dir = 1; }
+  const p = smootherstep(state.progress);
+
+  const target = dollyPath.getPointAt(p);
+  const look   = lookPath.getPointAt(p);
+
+  // hand-held micro-drift so the shot feels filmed, not lerped
+  target.x += Math.sin(t * 0.31) * 5.0;
+  target.y += Math.sin(t * 0.47 + 1.2) * 2.6;
+  target.z += Math.cos(t * 0.27) * 4.2;
+
+  camPos.lerp(target, 1 - Math.pow(0.0015, dt));
+  camTarget.lerp(look, 1 - Math.pow(0.004, dt));
+  camera.position.copy(camPos);
+  camera.lookAt(camTarget);
+  // subtle bank — rotate about the camera's own view axis (quaternion-safe,
+  // never accumulates because lookAt() rewrites the orientation each frame)
+  camera.rotateZ(Math.sin(t * 0.19) * 0.014);
+
+  // breathing focal length
+  camera.fov = 42 - 6 * Math.sin(p * Math.PI);
+  camera.updateProjectionMatrix();
+}
+
+/* ======================================================= Post-processing = */
+let composer = null, bloomPass = null, usePost = true;
+try {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.62, 0.72, 0.62);
+  composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());
+  composer.setSize(innerWidth, innerHeight);
+  composer.setPixelRatio(Math.min(devicePixelRatio, 2));
+} catch (err){
+  console.warn('Post-processing unavailable, falling back to direct render.', err);
+  usePost = false; composer = null;
+}
+
+/* =================================================================== UI == */
+const el = {
+  loader: document.getElementById('loader'),
+  bar: document.getElementById('loaderBar'),
+  loaderLabel: document.getElementById('loaderLabel'),
+  btnMode: document.getElementById('btnMode'),
+  btnFire: document.getElementById('btnFire'),
+  btnFog: document.getElementById('btnFog'),
+  btnQuality: document.getElementById('btnQuality'),
+  fps: document.getElementById('fps'),
+  tris: document.getElementById('tris'),
+  mode: document.getElementById('mode'),
+  clock: document.getElementById('clock')
+};
+
+function setMode(cinematic){
+  state.cinematic = cinematic;
+  controls.enabled = !cinematic;
+  el.btnMode.setAttribute('aria-pressed', String(cinematic));
+  el.btnMode.textContent = cinematic ? 'Sinematik Kamera' : 'Serbest Kamera (Orbit)';
+  el.mode.textContent = cinematic ? 'CINEMATIC' : 'ORBIT';
+  if (!cinematic){
+    controls.target.copy(camTarget);
+    controls.update();
+  } else {
+    camPos.copy(camera.position);
+  }
+}
+el.btnMode.addEventListener('click', () => setMode(!state.cinematic));
+
+el.btnFire.addEventListener('click', () => {
+  const x = -300 + (Math.random() - 0.5) * 900;
+  const z = 200 + Math.random() * 700;
+  triggerFlash(x, 6, z, 1.3 + Math.random() * 0.7);
+});
+
+el.btnFog.addEventListener('click', () => {
+  state.fogOn = !state.fogOn;
+  scene.fog.density = state.fogOn ? CONFIG.fogDensity : 0.00012;
+  seaUniforms.uFogDensity.value = scene.fog.density;
+  smokeMat.uniforms.uOpacity.value = state.fogOn ? 0.30 : 0.10;
+  el.btnFog.setAttribute('aria-pressed', String(state.fogOn));
+  el.btnFog.textContent = state.fogOn ? 'Savaş Dumanı' : 'Duman Kapalı';
+});
+
+el.btnQuality.addEventListener('click', () => {
+  const next = state.quality === 'high' ? 'balanced' : state.quality === 'balanced' ? 'performance' : 'high';
+  applyQuality(next);
+});
+function applyQuality(q){
+  state.quality = q;
+  const label = { high:'Yüksek', balanced:'Dengeli', performance:'Performans' }[q];
+  el.btnQuality.textContent = `Kalite: ${label}`;
+  if (q === 'high'){
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true; sun.castShadow = true;
+    usePost = !!composer; if (bloomPass) bloomPass.strength = 0.62;
+  } else if (q === 'balanced'){
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.35));
+    renderer.shadowMap.enabled = true; sun.castShadow = true;
+    usePost = !!composer; if (bloomPass) bloomPass.strength = 0.4;
+  } else {
+    renderer.setPixelRatio(1);
+    renderer.shadowMap.enabled = false; sun.castShadow = false;
+    usePost = false;
+  }
+  sun.shadow.map?.dispose?.(); sun.shadow.map = null;
+  scene.traverse(o => { if (o.isMesh && o.material) o.material.needsUpdate = true; });
+  onResize();
+}
+
+addEventListener('keydown', e => {
+  if (e.key === 'c' || e.key === 'C') setMode(!state.cinematic);
+  if (e.key === 'f' || e.key === 'F') el.btnFire.click();
+  if (e.key === 'g' || e.key === 'G') el.btnFog.click();
+});
+
+/* ============================================================== Resize == */
+function onResize(){
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  if (composer){
+    composer.setSize(w, h);
+    composer.setPixelRatio(renderer.getPixelRatio());
+  }
+}
+addEventListener('resize', onResize, { passive:true });
+addEventListener('orientationchange', () => setTimeout(onResize, 120));
+
+/* --- pause rendering when hidden (battery / GPU courtesy) --- */
+let visible = true;
+document.addEventListener('visibilitychange', () => { visible = !document.hidden; clock.getDelta(); });
+
+/* ============================================================ Animation == */
+const clock = new THREE.Clock();
+let fpsAcc = 0, fpsFrames = 0, nextArtillery = 2.5, elapsed = 0;
+let lastShadowX = Infinity, lastShadowZ = Infinity;
+
+function shipBob(ship, t, dt){
+  const u = ship.userData;
+  ship.position.y = Math.sin(t * 0.9 + u.phase) * 1.5 + Math.sin(t * 1.7 + u.phase * 2) * 0.7 + 1.5;
+  ship.rotation.z = Math.sin(t * 0.8 + u.phase) * 0.035;
+  ship.rotation.x = Math.sin(t * 1.15 + u.phase * 1.4) * 0.022;
+  ship.rotation.y = u.heading > 0 ? 0 : Math.PI;
+  ship.position.x += u.speed * u.heading * dt;
+  if (ship.position.x >  2100) ship.position.x = -2100;
+  if (ship.position.x < -2100) ship.position.x =  2100;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if (!visible) return;
+
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+  const t = elapsed;
+
+  // shaders
+  seaUniforms.uTime.value = t;
+  skyMat.uniforms.uTime.value = t;
+  smokeMat.uniforms.uTime.value = t;
+  dustMat.uniforms.uTime.value = t;
+
+  // keep the sea centred under the camera for an endless strait
+  sea.position.x = Math.round(camera.position.x / 200) * 200;
+  sea.position.z = Math.round(camera.position.z / 200) * 200;
+
+  // fleet
+  ships.forEach((ship, i) => {
+    shipBob(ship, t, dt);
+    const w = wakes[i];
+    w.position.set(ship.position.x - 150 * ship.userData.heading, 0.7, ship.position.z);
+    w.material.opacity = 0.16 + 0.06 * Math.sin(t * 2 + i);
+  });
+
+  // flag cloth simulation (cheap sine cloth)
+  if (memorialFlag){
+    const pos = memorialFlag.geometry.attributes.position;
+    const base = memorialFlag.userData.base;
+    for (let i = 0; i < pos.count; i++){
+      const bx = base[i*3], by = base[i*3+1];
+      const wave = Math.sin(bx * 0.35 + t * 3.1) * (bx + 13) * 0.07
+                 + Math.sin(by * 0.5 + t * 2.2) * (bx + 13) * 0.03;
+      pos.setZ(i, wave);
+    }
+    pos.needsUpdate = true;
+    memorialFlag.geometry.computeVertexNormals();
+  }
+
+  // distant artillery cadence
+  nextArtillery -= dt;
+  if (nextArtillery <= 0){
+    nextArtillery = 2.2 + Math.random() * 5.5;
+    const onSea = Math.random() > 0.45;
+    if (onSea){
+      const x = -700 + Math.random() * 1800;
+      const z = 260 + Math.random() * 900;
+      triggerFlash(x, 5, z, 0.8 + Math.random() * 0.9);
+    } else {
+      const x = CONFIG.memorial.x + (Math.random() - 0.5) * 1100;
+      const z = CONFIG.memorial.z + (Math.random() - 0.5) * 700;
+      triggerFlash(x, terrainHeight(x, z) + 6, z, 0.7 + Math.random() * 1.0);
+    }
+    // muzzle flash from a random ship's forward turret
+    if (Math.random() > 0.5){
+      const s = ships[Math.floor(Math.random() * ships.length)];
+      triggerFlash(s.position.x + 40 * s.userData.heading, 14, s.position.z, 0.55);
+    }
+  }
+  updateFlashes(dt);
+
+  // camera
+  if (state.cinematic && !REDUCED) updateCinematicCamera(dt, t);
+  else controls.update();
+
+  /* Keep the shadow frustum on the action, but SNAP the light rig to a world
+     grid the size of a shadow texel (1400 / 2048 ≈ 0.68 -> 4 units here) so
+     the cascade does not "swim" while the dolly moves. */
+  const TEXEL = 4;
+  const sx = Math.round(camTarget.x / TEXEL) * TEXEL;
+  const sz = Math.round(camTarget.z / TEXEL) * TEXEL;
+  const sy = Math.round(camTarget.y / TEXEL) * TEXEL;
+  if (sx !== lastShadowX || sz !== lastShadowZ){
+    lastShadowX = sx; lastShadowZ = sz;
+    sun.target.position.set(sx, sy, sz);
+    sun.position.set(sx + sunDir.x * 1400, sunDir.y * 1400 + 300, sz + sunDir.z * 1400);
+    sun.target.updateMatrixWorld();
+  }
+
+  // render
+  if (usePost && composer) composer.render();
+  else renderer.render(scene, camera);
+
+  // HUD
+  fpsAcc += dt; fpsFrames++;
+  if (fpsAcc >= 0.5){
+    el.fps.textContent = Math.round(fpsFrames / fpsAcc);
+    el.tris.textContent = renderer.info.render.triangles.toLocaleString('tr-TR');
+    fpsAcc = 0; fpsFrames = 0;
+    const shot = state.cinematic ? String(Math.min(8, 1 + Math.floor(state.progress * 8))).padStart(2, '0') : '––';
+    el.clock.textContent = `SHOT ${shot} · ${state.cinematic ? 'CINEMATIC' : 'FREE LOOK'}`;
+  }
+}
+
+/* ============================================================== Boot ===== */
+function boot(){
+  let p = 0;
+  const tick = setInterval(() => {
+    p = Math.min(100, p + 12 + Math.random() * 18);
+    el.bar.style.width = p + '%';
+    if (p >= 100){
+      clearInterval(tick);
+      el.loaderLabel.textContent = 'Hazır — C: kamera · F: topçu · G: duman';
+      setTimeout(() => el.loader.classList.add('done'), 420);
+    }
+  }, 130);
+
+  if (REDUCED){
+    setMode(false);
+    controls.target.set(CONFIG.memorial.x, memY + 60, CONFIG.memorial.z);
+    camera.position.set(CONFIG.memorial.x + 520, memY + 190, CONFIG.memorial.z + 640);
+    controls.update();
+  } else {
+    setMode(true);
+  }
+  onResize();
+  animate();
+}
+
+// warm up the GPU pipeline before revealing the scene
+renderer.compile(scene, camera);
+boot();
+
+/* --------------------------------------------------- Context loss guard -- */
+renderer.domElement.addEventListener('webglcontextlost', e => {
+  e.preventDefault();
+  el.loaderLabel.textContent = 'WebGL bağlamı kayboldu — sayfayı yenileyin.';
+  el.loader.classList.remove('done');
+});
+
+console.log('%cÇanakkale 1915 — build by Opus 5', 'color:#ffb06b;font-size:14px;font-weight:700');
+</script>
+</body>
+</html>
