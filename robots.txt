@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://umutseve4.github.io/canakkale-1915-webgl/
