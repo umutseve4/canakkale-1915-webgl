@@ -6,7 +6,7 @@ A single-file, dependency-free (CDN ES modules only) **Three.js r169** scene the
 **Battle of Gallipoli / Çanakkale Savaşı, 1915**. Everything you see is generated in code —
 no meshes, no textures, no model files.
 
-**▶ Live:** open `index.html`, or enable GitHub Pages on `main` → `/`
+**▶ Live:** <https://umutseve4.github.io/canakkale-1915-webgl/> — or just open `index.html`.
 
 ---
 
@@ -54,6 +54,25 @@ no meshes, no textures, no model files.
 
 - Three.js `0.169.0` via `importmap` (unpkg) — no build step, no `node_modules`.
 - Plain HTML + CSS + ES modules. Open the file and it runs.
+
+## Related — the twin repository
+
+[`gallipoli-1915-webgl`](https://github.com/umutseve4/gallipoli-1915-webgl)
+([live](https://umutseve4.github.io/gallipoli-1915-webgl/)) is a **second, independent
+build of the same subject**, not an accident and not a fork. Both are kept because they
+differ where it matters:
+
+| | `canakkale-1915-webgl` (here) | `gallipoli-1915-webgl` |
+|---|---|---|
+| Engine | Three.js **r169** | Three.js **0.167.1** |
+| CDN | unpkg | jsDelivr |
+| Sea | 4 Gerstner waves, world-space displacement | 3 summed sines, derivative normals |
+| Post-processing | `EffectComposer` + `UnrealBloomPass` | none — direct render |
+| Framing | memorial-centred cinematic dolly | wide battle staging + HUD clock |
+| Credit | Build by Opus 5 | Build by GPT 5.6 |
+
+If you are comparing the two, compare the sea shader and the camera rig first; that is
+where the two interpretations actually diverge.
 
 ## License
 
