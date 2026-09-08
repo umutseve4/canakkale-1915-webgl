@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fd039e72-f0c9-4de3-a92c-271186eeef54" alt="Çanakkale 1915 — şafak vakti Boğaz, filo ve Şehitler Abidesi" width="900">
+  <img src="https://github.com/user-attachments/assets/fd039e72-f0c9-4de3-a92c-271186eeef54" alt="Çanakkale 1915: şafak vakti Boğaz, filo ve Şehitler Abidesi" width="900">
 </p>
 
 <h1 align="center">Çanakkale 1915</h1>
 
 <p align="center">
   Şafak vakti Boğaz'ın üstünde sinematik bir anma sahnesi.<br>
-  Tarayıcıda açılır. Tek bir model, doku veya fotoğraf dosyası kullanılmadı — gördüğünüz her şey kodla üretildi.
+  Tarayıcıda açılır. Tek bir model, doku veya fotoğraf dosyası kullanılmadı. Gördüğünüz her şey kodla üretildi.
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 ## 30 saniyede ne oluyor?
 
-Kamera açık Ege'den başlıyor, dalgaların üstünden geçip filonun arasına giriyor, kıyıya tırmanıp Şehitler Abidesi'nde duruyor. Deniz gerçekten dalgalanıyor — dört Gerstner dalgası üst üste biniyor, güneş tepelerinde kırılıyor, rüzgâr köpüğü savuruyor. Sis ağır; siperlerde kum torbaları ve kırılmış ağaçlar var. `F` tuşuna basınca top ateşleniyor: parlama, şok halkası, yükselen duman ve gerçek bir ışık kaynağı.
+Kamera açık Ege'den başlıyor, dalgaların üstünden geçip filonun arasına giriyor, kıyıya tırmanıp Şehitler Abidesi'nde duruyor. Deniz gerçekten dalgalanıyor: dört Gerstner dalgası üst üste biniyor, güneş tepelerinde kırılıyor, rüzgâr köpüğü savuruyor. Sis ağır; siperlerde kum torbaları ve kırılmış ağaçlar var. `F` tuşuna basınca top ateşleniyor: parlama, şok halkası, yükselen duman ve gerçek bir ışık kaynağı.
 
 | Girdi | Etki |
 |---|---|
@@ -39,7 +39,7 @@ Kamera açık Ege'den başlıyor, dalgaların üstünden geçip filonun arasına
 | **Deniz** | Dört Gerstner dalgası, analitik teğet/binormal normaller, Fresnel derinlik karışımı, keskin güneş parıltısı, rüzgâr köpüğü. Yer değiştirme **dünya uzayında** hesaplandığı için karo her karede kameranın altına yeniden ortalanıyor, faz sıçraması olmuyor. |
 | **Abide** | Prosedürel Çanakkale Şehitleri Abidesi: basamaklı kaide, dört ayak, lento, lahit, kitabe ve sinüs dalgasıyla dalgalanan bayrak. |
 | **Tabya** | Kıyı topları ve mazgallarıyla kavisli burç hattı, gerçek arazi yüksekliğine oturtuldu. |
-| **Siperler** | 260 kum torbası tek bir `InstancedMesh` içinde, yüksekliğe göre filtrelendi — hiçbiri havada durmuyor veya toprağa gömülmüyor. |
+| **Siperler** | 260 kum torbası tek bir `InstancedMesh` içinde, yüksekliğe göre filtrelendi, hiçbiri havada durmuyor veya toprağa gömülmüyor. |
 | **Filo** | 5 düşük poligonlu zırhlı: konikleşen gövde, üstyapı, bacalar, direkler, çift namlulu taretler. Her biri kendi fazında sallanıyor, ardında dümen suyu bırakıyor. |
 | **Parçacıklar** | 900 duman noktası, 1400 toz/kıvılcım zerresi, havuzlanmış topçu parlaması. |
 | **Kamera** | `CatmullRomCurve3` dolly + ayrı bakış eğrisi; yumuşatılmış hız, elde tutma titreşimi, kuaterniyon güvenli yatış, nefes alan odak uzaklığı. |
@@ -56,7 +56,7 @@ Canlı sürüm için [buraya tıklayın](https://umutseve4.github.io/canakkale-1
 
 **Sis iki yerde aynı.** `FogExp2` metriği (`-mvPosition.z`) deniz shader'ında birebir yeniden üretildi, böylece özel shader ile yerleşik sis birbirinden ayrılmıyor.
 
-**Ton eşleme bir kez uygulanıyor.** Three.js render hedefine çizerken shader içi ton eşlemeyi kapattığı için composer yolunda ton eşleme yalnızca `OutputPass`'te yapılıyor — iki yolda da çift uygulama yok.
+**Ton eşleme bir kez uygulanıyor.** Three.js render hedefine çizerken shader içi ton eşlemeyi kapattığı için composer yolunda ton eşleme yalnızca `OutputPass`'te yapılıyor, iki yolda da çift uygulama yok.
 
 **Kırılganlığa karşı.** `prefers-reduced-motion` açıksa sahne duruyor başlıyor; canvas odaklanabilir ve etiketli; sekme arka plana geçince render duruyor; `webglcontextlost` yakalanıyor; post-processing yüklenemezse doğrudan render'a düşülüyor.
 
@@ -67,16 +67,18 @@ Bağımlılık: Three.js `0.169.0`, `importmap` ile CDN'den. Derleme adımı, `n
 - Bu bir anma sahnesidir, tarihsel yeniden canlandırma değil. Gemiler, tabya ve arazi dönemin *mertebesinde* tasarlandı; belirli bir gemi veya mevzi modellenmedi.
 - Three.js CDN'den geldiği için ilk açılışta internet gerekir.
 - Mobilde kalite kademesi düşer; geniş ekran için tasarlandı.
+- Arazi inşası süresi (~495 ms'den ~100 ms'ye) tek bir masaüstü makinede, Chrome'da, `performance.now()` ile ölçüldü. Cihazdan cihaza değişir; bağımsız bir kıyaslama değil, aynı makinede önce ve sonra ölçümüdür.
+- Kare hızı ölçülmedi, o yüzden hiçbir yerde FPS rakamı verilmiyor.
 
 ## İkiz depo
 
-[`gallipoli-1915-webgl`](https://github.com/umutseve4/gallipoli-1915-webgl) ([canlı](https://umutseve4.github.io/gallipoli-1915-webgl/)) aynı konunun **ikinci, bağımsız yorumudur** — kaza değil, fork değil. İkisi de duruyor çünkü asıl yerlerde ayrılıyorlar:
+[`gallipoli-1915-webgl`](https://github.com/umutseve4/gallipoli-1915-webgl) ([canlı](https://umutseve4.github.io/gallipoli-1915-webgl/)) aynı konunun **ikinci, bağımsız yorumudur**. Kaza değil, fork değil. İkisi de duruyor çünkü asıl yerlerde ayrılıyorlar:
 
 | | `canakkale-1915-webgl` (burası) | `gallipoli-1915-webgl` |
 |---|---|---|
 | Motor | Three.js **r169** | Three.js **0.167.1** |
 | Deniz | 4 Gerstner dalgası, dünya uzayı | 3 toplanmış sinüs, türev normaller |
-| Son işlem | `EffectComposer` + bloom | yok — doğrudan render |
+| Son işlem | `EffectComposer` + bloom | yok, doğrudan render |
 | Çerçeveleme | abide merkezli sinematik dolly | geniş savaş sahnesi + HUD saati |
 | İmza | Build by Opus 5 | Build by GPT 5.6 |
 
@@ -84,4 +86,4 @@ Karşılaştıracaksanız önce deniz shader'ına ve kamera rigine bakın; iki y
 
 ---
 
-MIT — bkz. [LICENSE](LICENSE). Kod için; konu, onurlandırdığı ortak mirasın kendisidir. &nbsp;·&nbsp; Build by **Opus 5**.
+MIT lisanslı, bkz. [LICENSE](LICENSE). Kod için; konu, onurlandırdığı ortak mirasın kendisidir. &nbsp;·&nbsp; Build by **Opus 5**.
