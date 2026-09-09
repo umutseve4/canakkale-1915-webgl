@@ -1,0 +1,31 @@
+name: verify
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: offline verification
+        run: |
+          set +e
+          node verify.mjs 2>&1 | tee /tmp/verify.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            body=$(tail -n 40 /tmp/verify.log)
+            body="${body//'%'/'%25'}"
+            body="${body//$'\n'/'%0A'}"
+            echo "::error title=verify.mjs failed::${body}"
+          fi
+          exit $code
