@@ -53,9 +53,16 @@ check("handles a lost webgl context", () => {
   return "webglcontextlost listener present";
 });
 check("canvas is focusable and labelled", () => {
-  assert(/tabindex/.test(html), "no tabindex anywhere");
-  assert(/aria-label|aria-describedby|<label/i.test(html), "no accessible label");
-  return "tabindex + label";
+  // Two spellings are legitimate: the HTML attribute on a <canvas> tag, and
+  // the DOM property on the canvas three.js creates. Both are accepted, but
+  // both have to land on the canvas, not on some unrelated element.
+  const attr = /<canvas\b[^>]*\btabindex\s*=/i.test(html);
+  const prop = /(domElement|canvas)\s*\.\s*tabIndex\s*=/.test(html);
+  assert(attr || prop, "the canvas is never made focusable (no tabindex, no .tabIndex)");
+  const labelAttr = /<canvas\b[^>]*\baria-label\s*=/i.test(html);
+  const labelProp = /(domElement|canvas)[\s\S]{0,80}?["']aria-label["']/.test(html);
+  assert(labelAttr || labelProp, "the canvas has no accessible label");
+  return `focusable via ${attr ? "attribute" : "tabIndex"}, labelled`;
 });
 
 // ------------------------------------------------------------------- assets
