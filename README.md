@@ -1,89 +1,103 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fd039e72-f0c9-4de3-a92c-271186eeef54" alt="Çanakkale 1915: şafak vakti Boğaz, filo ve Şehitler Abidesi" width="900">
+  <img src="https://github.com/user-attachments/assets/fd039e72-f0c9-4de3-a92c-271186eeef54" alt="Canakkale 1915: the Strait at dawn, the fleet and the Martyrs' Memorial" width="900">
 </p>
 
-<h1 align="center">Çanakkale 1915</h1>
+<h1 align="center">Canakkale 1915</h1>
 
 <p align="center">
-  Şafak vakti Boğaz'ın üstünde sinematik bir anma sahnesi.<br>
-  Tarayıcıda açılır. Tek bir model, doku veya fotoğraf dosyası kullanılmadı. Gördüğünüz her şey kodla üretildi.
+  A cinematic commemorative scene over the Strait at dawn.<br>
+  It opens in the browser. Not one model, texture or photograph file is used. Everything you see is generated in code.
 </p>
 
 <p align="center">
-  <a href="https://umutseve4.github.io/canakkale-1915-webgl/"><img src="https://img.shields.io/badge/canl%C4%B1-demo-FF4D4F?style=flat-square" alt="Canlı demo"></a>
-  <img src="https://img.shields.io/badge/model%20dosyas%C4%B1-0-FF4D4F?style=flat-square" alt="Sıfır model dosyası">
-  <img src="https://img.shields.io/badge/arazi%20in%C5%9Fas%C4%B1-100%20ms-FF4D4F?style=flat-square" alt="Arazi inşası 100 ms">
+  <a href="https://umutseve4.github.io/canakkale-1915-webgl/"><img src="https://img.shields.io/badge/live-demo-FF4D4F?style=flat-square" alt="Live demo"></a>
+  <img src="https://img.shields.io/badge/model%20files-0-FF4D4F?style=flat-square" alt="Zero model files">
+  <img src="https://img.shields.io/badge/terrain%20build-100%20ms-FF4D4F?style=flat-square" alt="Terrain build 100 ms">
 </p>
 
-<p align="center"><b><a href="https://umutseve4.github.io/canakkale-1915-webgl/">▶ Sahneyi aç</a></b></p>
+<p align="center"><b><a href="https://umutseve4.github.io/canakkale-1915-webgl/">Open the scene</a></b></p>
 
 ---
 
-## 30 saniyede ne oluyor?
+## What happens in the first 30 seconds
 
-Kamera açık Ege'den başlıyor, dalgaların üstünden geçip filonun arasına giriyor, kıyıya tırmanıp Şehitler Abidesi'nde duruyor. Deniz gerçekten dalgalanıyor: dört Gerstner dalgası üst üste biniyor, güneş tepelerinde kırılıyor, rüzgâr köpüğü savuruyor. Sis ağır; siperlerde kum torbaları ve kırılmış ağaçlar var. `F` tuşuna basınca top ateşleniyor: parlama, şok halkası, yükselen duman ve gerçek bir ışık kaynağı.
+The camera starts out over the open Aegean, passes across the waves, moves in between the ships of the fleet, climbs the shore and comes to rest at the Martyrs' Memorial. The sea really does move: four Gerstner waves are stacked on top of each other, the sun breaks on their crests, and the wind carries the foam. The fog is heavy, and there are sandbags and broken trees in the trenches. Press `F` and a gun fires: a flash, a shock ring, rising smoke and a real light source.
 
-| Girdi | Etki |
+| Input | Effect |
 |---|---|
-| `C` | Sinematik kamera ⇄ serbest gezinme |
-| `F` | Topçu atışı |
-| `G` | Savaş dumanını aç / kapat |
-| Sürükle · tekerlek | Yörünge, yakınlaşma (serbest modda) |
-| Kalite düğmesi | Yüksek / Dengeli / Performans |
+| `C` | Cinematic camera and free flight, toggled |
+| `F` | Artillery shot |
+| `G` | Battle smoke on or off |
+| Drag, wheel | Orbit and zoom (in free mode) |
+| Quality button | High / Balanced / Performance |
 
-## Sahnede ne var?
+## What is in the scene
 
-| Katman | Nasıl yapıldı |
+| Layer | How it is made |
 |---|---|
-| **Arazi** | 400×400 bölmeli düzlem, CPU'da deterministik değer gürültüsüyle (fBm + ridged fBm) yükseltildi. Gürültüyle bozulmuş kıyı çizgisi, dik yamaç, plato, sırt ve dere yatakları. Renk yüksekliğe *ve* eğime göre karışıyor: şelf → kum → kuru maki → çıplak kaya. |
-| **Deniz** | Dört Gerstner dalgası, analitik teğet/binormal normaller, Fresnel derinlik karışımı, keskin güneş parıltısı, rüzgâr köpüğü. Yer değiştirme **dünya uzayında** hesaplandığı için karo her karede kameranın altına yeniden ortalanıyor, faz sıçraması olmuyor. |
-| **Abide** | Prosedürel Çanakkale Şehitleri Abidesi: basamaklı kaide, dört ayak, lento, lahit, kitabe ve sinüs dalgasıyla dalgalanan bayrak. |
-| **Tabya** | Kıyı topları ve mazgallarıyla kavisli burç hattı, gerçek arazi yüksekliğine oturtuldu. |
-| **Siperler** | 260 kum torbası tek bir `InstancedMesh` içinde, yüksekliğe göre filtrelendi, hiçbiri havada durmuyor veya toprağa gömülmüyor. |
-| **Filo** | 5 düşük poligonlu zırhlı: konikleşen gövde, üstyapı, bacalar, direkler, çift namlulu taretler. Her biri kendi fazında sallanıyor, ardında dümen suyu bırakıyor. |
-| **Parçacıklar** | 900 duman noktası, 1400 toz/kıvılcım zerresi, havuzlanmış topçu parlaması. |
-| **Kamera** | `CatmullRomCurve3` dolly + ayrı bakış eğrisi; yumuşatılmış hız, elde tutma titreşimi, kuaterniyon güvenli yatış, nefes alan odak uzaklığı. |
+| **Terrain** | A 400x400 subdivided plane, displaced on the CPU by deterministic value noise (fBm plus ridged fBm). A noise broken coastline, a steep slope, a plateau, a ridge and stream beds. Colour blends by height *and* by slope: shelf, sand, dry scrub, bare rock. |
+| **Sea** | Four Gerstner waves, analytic tangent and binormal normals, a Fresnel depth blend, a sharp sun glint, wind foam. The displacement is computed **in world space**, so the tile is recentred under the camera every frame with no phase jump. |
+| **Memorial** | A procedural Canakkale Martyrs' Memorial: a stepped base, four legs, the lintel, the sarcophagus, the inscription and a flag rippling on a sine wave. |
+| **Battery** | A curved rampart line with coastal guns and embrasures, seated on the real terrain height. |
+| **Trenches** | 260 sandbags inside a single `InstancedMesh`, filtered by height, none of them floating in the air or sunk into the ground. |
+| **Fleet** | 5 low polygon battleships: a tapering hull, superstructure, funnels, masts, twin barrelled turrets. Each rolls on its own phase and leaves a wake behind it. |
+| **Particles** | 900 smoke points, 1400 dust and spark motes, a pooled artillery flash. |
+| **Camera** | A `CatmullRomCurve3` dolly plus a separate look curve; smoothed speed, handheld shake, quaternion safe roll, a breathing focal length. |
 
-## Nasıl çalıştırırım?
+## How to run it
 
-Canlı sürüm için [buraya tıklayın](https://umutseve4.github.io/canakkale-1915-webgl/). Yerelde çalıştırmak isterseniz `index.html` dosyasını indirip çift tıklayın. Derleme, `npm install`, sunucu gerekmez.
+For the live version, [click here](https://umutseve4.github.io/canakkale-1915-webgl/). To run it locally, download `index.html` and double click it. No build, no `npm install`, no server.
 
-## Mühendislik notları
+## Engineering notes
 
-**Açılış maliyeti düşürüldü.** Yükseklik alanı her köşe için **tam bir kez** hesaplanıp `Float32Array` ızgarasına yazılıyor; eğim sonra komşu hücrelerden merkezi farkla alınıyor. Bu, köşe başına 5 fBm çağrısının 4'ünü sildi ve arazi inşasını **~495 ms'den ~100 ms'ye** indirdi.
+**The opening cost came down.** The height field is evaluated **exactly once** per vertex and written into a `Float32Array` grid; the slope is then taken as a central difference from neighbouring cells. That removed 4 of the 5 fBm calls per vertex and brought the terrain build from ~495 ms down to ~100 ms.
 
-**Gölgeler yüzmüyor.** Yönlü ışık kamerayı takip ediyor ama **bir gölge dokusu piksel boyutundaki dünya ızgarasına kilitleniyor**; dolly hareket ederken gölgeler sürünmüyor.
+**Shadows do not swim.** The directional light follows the camera, but **a shadow texel is locked to a world grid of one texel in size**, so the shadows do not crawl while the dolly moves.
 
-**Sis iki yerde aynı.** `FogExp2` metriği (`-mvPosition.z`) deniz shader'ında birebir yeniden üretildi, böylece özel shader ile yerleşik sis birbirinden ayrılmıyor.
+**The fog is the same in two places.** The `FogExp2` metric (`-mvPosition.z`) is reproduced exactly inside the sea shader, so the custom shader and the built in fog do not separate from each other.
 
-**Ton eşleme bir kez uygulanıyor.** Three.js render hedefine çizerken shader içi ton eşlemeyi kapattığı için composer yolunda ton eşleme yalnızca `OutputPass`'te yapılıyor, iki yolda da çift uygulama yok.
+**Tone mapping is applied once.** Three.js turns off in shader tone mapping when it draws into a render target, so on the composer path tone mapping happens only in `OutputPass`. Neither path applies it twice.
 
-**Kırılganlığa karşı.** `prefers-reduced-motion` açıksa sahne duruyor başlıyor; canvas odaklanabilir ve etiketli; sekme arka plana geçince render duruyor; `webglcontextlost` yakalanıyor; post-processing yüklenemezse doğrudan render'a düşülüyor.
+**Against fragility.** If `prefers-reduced-motion` is set the scene starts still; the canvas is focusable and labelled; rendering stops when the tab goes to the background; `webglcontextlost` is caught; if post processing fails to load, it falls back to direct rendering.
 
-Bağımlılık: Three.js `0.169.0`, `importmap` ile CDN'den. Derleme adımı, `node_modules` yok.
+Dependency: Three.js `0.169.0`, from a CDN through an `importmap`. No build step, no `node_modules`.
 
-## Sınırlar
+## How it is verified
 
-- Bu bir anma sahnesidir, tarihsel yeniden canlandırma değil. Gemiler, tabya ve arazi dönemin *mertebesinde* tasarlandı; belirli bir gemi veya mevzi modellenmedi.
-- Three.js CDN'den geldiği için ilk açılışta internet gerekir.
-- Mobilde kalite kademesi düşer; geniş ekran için tasarlandı.
-- Arazi inşası süresi (~495 ms'den ~100 ms'ye) tek bir masaüstü makinede, Chrome'da, `performance.now()` ile ölçüldü. Cihazdan cihaza değişir; bağımsız bir kıyaslama değil, aynı makinede önce ve sonra ölçümüdür.
-- Kare hızı ölçülmedi, o yüzden hiçbir yerde FPS rakamı verilmiyor.
+The scene needs a GPU, so CI cannot open it and cannot measure a frame rate. What CI does check, through `verify.mjs`, is everything that can be checked without one:
 
-## İkiz depo
+```
+node verify.mjs
+```
 
-[`gallipoli-1915-webgl`](https://github.com/umutseve4/gallipoli-1915-webgl) ([canlı](https://umutseve4.github.io/gallipoli-1915-webgl/)) aynı konunun **ikinci, bağımsız yorumudur**. Kaza değil, fork değil. İkisi de duruyor çünkü asıl yerlerde ayrılıyorlar:
+- the document declares `lang`, a title and a viewport, handles `prefers-reduced-motion`, catches `webglcontextlost`, and keeps the canvas focusable and labelled
+- every resource the browser actually loads comes from an allowed CDN, and no model, texture, photograph or video file is referenced at all, which is what makes the "0 model files" badge a measured claim rather than a slogan
+- three is pinned to exactly one version in the importmap, and **the README names that same version**, so this section cannot go stale on its own
+- the module script parses, and no `debugger` or `alert` was left behind
+- the terrain build figure is the same number in all three places it appears in this README, and no frame rate figure is published anywhere, because none was measured
 
-| | `canakkale-1915-webgl` (burası) | `gallipoli-1915-webgl` |
+## Limits
+
+- This is a commemorative scene, not a historical reconstruction. The ships, the battery and the terrain were designed in the *order of magnitude* of the period. No specific ship or specific position is modelled.
+- Three.js comes from a CDN, so the first load needs an internet connection.
+- The quality tier drops on mobile; this was designed for a wide screen.
+- The terrain build time (from ~495 ms to ~100 ms) was measured on a single desktop machine, in Chrome, with `performance.now()`. It varies from device to device. It is a before and after measurement on the same machine, not an independent benchmark.
+- The frame rate was not measured, which is why no frame rate figure is given anywhere.
+
+## Twin repository
+
+[`gallipoli-1915-webgl`](https://github.com/umutseve4/gallipoli-1915-webgl) ([live](https://umutseve4.github.io/gallipoli-1915-webgl/)) is a **second, independent reading** of the same subject. Not an accident, not a fork. Both stay up because they part company in the places that matter:
+
+| | `canakkale-1915-webgl` (here) | `gallipoli-1915-webgl` |
 |---|---|---|
-| Motor | Three.js **r169** | Three.js **0.167.1** |
-| Deniz | 4 Gerstner dalgası, dünya uzayı | 3 toplanmış sinüs, türev normaller |
-| Son işlem | `EffectComposer` + bloom | yok, doğrudan render |
-| Çerçeveleme | abide merkezli sinematik dolly | geniş savaş sahnesi + HUD saati |
-| İmza | Build by Opus 5 | Build by GPT 5.6 |
+| Engine | Three.js **r169** | Three.js **0.167.1** |
+| Sea | 4 Gerstner waves, world space | 3 summed sines, derivative normals |
+| Post processing | `EffectComposer` plus bloom | none, direct render |
+| Framing | a memorial centred cinematic dolly | a wide battle scene plus a HUD clock |
+| Signature | Build by Opus 5 | Build by GPT 5.6 |
 
-Karşılaştıracaksanız önce deniz shader'ına ve kamera rigine bakın; iki yorum asıl orada ayrışıyor.
+If you want to compare them, look at the sea shader and the camera rig first. That is where the two readings actually diverge.
 
 ---
 
-MIT lisanslı, bkz. [LICENSE](LICENSE). Kod için; konu, onurlandırdığı ortak mirasın kendisidir. &nbsp;·&nbsp; Build by **Opus 5**.
+MIT licensed, see [LICENSE](LICENSE). That covers the code; the subject itself is the shared heritage it honours. &nbsp;·&nbsp; Build by **Opus 5**.
